@@ -1,0 +1,2757 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>飛行棋</title>
+  <style>
+    :root {
+      --bg-app: #0f172a;
+      --bg-panel: #1e293b;
+      --bg-panel-alt: #263349;
+      --border-subtle: rgba(148, 163, 184, 0.18);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+
+      --red: #ef4444;
+      --red-dark: #b91c1c;
+      --red-soft: rgba(239, 68, 68, 0.18);
+
+      --yellow: #eab308;
+      --yellow-dark: #a16207;
+      --yellow-soft: rgba(234, 179, 8, 0.18);
+
+      --blue: #3b82f6;
+      --blue-dark: #1d4ed8;
+      --blue-soft: rgba(59, 130, 246, 0.18);
+
+      --green: #22c55e;
+      --green-dark: #15803d;
+      --green-soft: rgba(34, 197, 94, 0.18);
+
+      --board-frame: #f1f5f9;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --shadow-lg: 0 20px 45px rgba(0, 0, 0, 0.45);
+      --dice-size: 56px;
+      --dice-half: 28px;
+      --font-sans: "PingFang TC", "PingFang HK", "Microsoft JhengHei", "Noto Sans TC", "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at 20% 10%, #1e293b 0%, #0b1120 75%);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      user-select: none;
+    }
+
+    /* App Shell */
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100dvh;
+      max-width: 1480px;
+      margin: 0 auto;
+    }
+
+    /* Top Header */
+    .topbar {
+      height: 54px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      background: rgba(15, 23, 42, 0.85);
+      border-bottom: 1px solid var(--border-subtle);
+      backdrop-filter: blur(10px);
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.08rem;
+      letter-spacing: 0.4px;
+    }
+
+    .brand-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #38bdf8, #3b82f6);
+      display: grid;
+      place-items: center;
+      box-shadow: 0 4px 12px rgba(56, 189, 248, 0.35);
+    }
+
+    .brand-sub {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--accent);
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 9px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-panel);
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .icon-btn:hover {
+      background: var(--bg-panel-alt);
+      border-color: rgba(148, 163, 184, 0.38);
+    }
+
+    .icon-btn:active {
+      transform: scale(0.96);
+    }
+
+    .icon-btn.primary {
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+      border-color: transparent;
+    }
+
+    .icon-btn.primary:hover {
+      filter: brightness(1.08);
+    }
+
+    /* Main Workspace (Desktop default) */
+    .workspace {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr 370px;
+      gap: 18px;
+      padding: 14px 18px;
+      align-items: center;
+    }
+
+    /* Mobile top strip (hidden on desktop) */
+    .mobile-strip {
+      display: none;
+    }
+
+    /* Board Stage */
+    .board-stage {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .board-frame {
+      width: min(calc(100dvh - 86px), calc(100vw - 424px), 780px);
+      aspect-ratio: 1 / 1;
+      border-radius: 20px;
+      padding: 8px;
+      background: linear-gradient(145deg, #e2e8f0, #cbd5e1);
+      box-shadow: var(--shadow-lg), inset 0 2px 3px rgba(255, 255, 255, 0.8);
+      position: relative;
+    }
+
+    #board-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: 14px;
+      background: #fffdf8;
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+      touch-action: manipulation;
+    }
+
+    /* Sidebar Panel */
+    .sidebar {
+      height: 100%;
+      max-height: 780px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .card {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+    }
+
+    /* Turn & Dice Control Card */
+    .control-card {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .turn-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .turn-who {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .turn-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      box-shadow: 0 0 12px currentColor;
+    }
+
+    .turn-name {
+      font-size: 1.05rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .turn-tag {
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .dice-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+    }
+
+    /* 3D Dice */
+    .dice-scene {
+      width: var(--dice-size);
+      height: var(--dice-size);
+      perspective: 260px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .dice-cube {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.48s cubic-bezier(0.22, 1.28, 0.36, 1);
+      transform: rotateX(-18deg) rotateY(22deg);
+    }
+
+    .dice-cube.rolling {
+      transition: transform 0.42s cubic-bezier(0.3, 0.9, 0.4, 1);
+    }
+
+    .dice-face {
+      position: absolute;
+      width: var(--dice-size);
+      height: var(--dice-size);
+      border-radius: 12px;
+      background: linear-gradient(145deg, #ffffff, #e2e8f0);
+      border: 1px solid #cbd5e1;
+      box-shadow: inset 0 0 8px rgba(15, 23, 42, 0.12);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      padding: 8px;
+      gap: 2px;
+      backface-visibility: hidden;
+    }
+
+    .face-1 { transform: rotateY(0deg) translateZ(var(--dice-half)); }
+    .face-6 { transform: rotateY(180deg) translateZ(var(--dice-half)); }
+    .face-2 { transform: rotateY(90deg) translateZ(var(--dice-half)); }
+    .face-5 { transform: rotateY(-90deg) translateZ(var(--dice-half)); }
+    .face-3 { transform: rotateX(90deg) translateZ(var(--dice-half)); }
+    .face-4 { transform: rotateX(-90deg) translateZ(var(--dice-half)); }
+
+    .pip {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #1e293b;
+      align-self: center;
+      justify-self: center;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+    }
+
+    .face-1 .pip {
+      width: 14px;
+      height: 14px;
+      background: #dc2626;
+      grid-column: 2;
+      grid-row: 2;
+    }
+
+    .face-4 .pip {
+      background: #dc2626;
+    }
+
+    .dice-action-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .roll-btn {
+      width: 100%;
+      height: 44px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #38bdf8, #2563eb);
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 0.98rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+      transition: transform 0.12s ease, filter 0.15s ease, opacity 0.15s ease;
+    }
+
+    .roll-btn:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+
+    .roll-btn:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    .roll-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .status-hint {
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      line-height: 1.35;
+      min-height: 22px;
+    }
+
+    /* Player Cards List */
+    .players-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .player-card {
+      background: rgba(15, 23, 42, 0.52);
+      border: 1.5px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 9px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    }
+
+    .player-card.active {
+      background: rgba(30, 41, 59, 0.95);
+      transform: translateY(-1px);
+    }
+
+    .player-card.off {
+      opacity: 0.38;
+    }
+
+    .player-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .player-ident {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .player-swatch {
+      width: 11px;
+      height: 11px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .player-label {
+      font-size: 0.84rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .player-type-pill {
+      font-size: 0.68rem;
+      padding: 1px 6px;
+      border-radius: 6px;
+      background: rgba(148, 163, 184, 0.16);
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .player-pips {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .plane-pip {
+      flex: 1;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.18);
+      transition: background 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .plane-pip.active {
+      background: rgba(248, 250, 252, 0.45);
+    }
+
+    .plane-pip.finished {
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    .player-rank-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #fbbf24;
+    }
+
+    /* Battle Log */
+    .log-card {
+      flex: 1;
+      min-height: 110px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow: hidden;
+    }
+
+    .log-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .log-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      padding-right: 4px;
+      font-size: 0.8rem;
+    }
+
+    .log-list::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .log-list::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.25);
+      border-radius: 999px;
+    }
+
+    .log-item {
+      padding: 5px 8px;
+      border-radius: 7px;
+      background: rgba(15, 23, 42, 0.45);
+      border-left: 3px solid var(--text-muted);
+      color: #e2e8f0;
+      line-height: 1.35;
+    }
+
+    /* SVG Token & Highlight Animations */
+    .token-group {
+      transition: transform 0.14s ease-out;
+      cursor: default;
+    }
+
+    .token-group.movable {
+      cursor: pointer;
+    }
+
+    .token-group.movable:hover {
+      filter: brightness(1.1);
+    }
+
+    @keyframes pulseRing {
+      0% { transform: scale(0.92); opacity: 0.95; }
+      70% { transform: scale(1.28); opacity: 0.15; }
+      100% { transform: scale(1.32); opacity: 0; }
+    }
+
+    .pulse-ring {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: pulseRing 1.15s infinite ease-out;
+      pointer-events: none;
+    }
+
+    @keyframes floatArrow {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-4px); }
+    }
+
+    .pointer-bounce {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: floatArrow 0.8s infinite ease-in-out;
+      pointer-events: none;
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.72);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 100;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 540px;
+      max-height: 92dvh;
+      overflow-y: auto;
+      background: #1e293b;
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-size: 1.22rem;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .close-x {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+      background: rgba(15, 23, 42, 0.5);
+      color: var(--text-main);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+
+    .preset-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .preset-btn {
+      flex: 1 1 auto;
+      padding: 7px 10px;
+      border-radius: 9px;
+      border: 1px solid var(--border-subtle);
+      background: rgba(15, 23, 42, 0.6);
+      color: #cbd5e1;
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .setup-players {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .setup-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .setup-color-badge {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 0.85rem;
+      color: #fff;
+    }
+
+    .setup-name-input {
+      width: 100%;
+      min-width: 0;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 8px;
+      padding: 6px 10px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.9rem;
+    }
+
+    .seg-control {
+      display: inline-flex;
+      background: rgba(30, 41, 59, 0.9);
+      border-radius: 9px;
+      padding: 3px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .seg-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 5px 9px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .seg-btn.active {
+      background: #38bdf8;
+      color: #0f172a;
+    }
+
+    .seg-btn.active.off-mode {
+      background: #475569;
+      color: #f8fafc;
+    }
+
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .opt-box {
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .opt-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-lg {
+      flex: 1;
+      height: 44px;
+      border-radius: 11px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-panel-alt);
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.96rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-lg.primary {
+      border: none;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      box-shadow: 0 6px 18px rgba(34, 197, 94, 0.35);
+    }
+
+    .rules-content {
+      font-size: 0.88rem;
+      line-height: 1.6;
+      color: #cbd5e1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .rules-content h4 {
+      margin: 4px 0 2px;
+      color: #f8fafc;
+      font-size: 0.95rem;
+    }
+
+    .rules-content ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .victory-podium {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .podium-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid var(--border-subtle);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      top: 66px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-16px);
+      background: rgba(15, 23, 42, 0.94);
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      color: #f8fafc;
+      padding: 9px 18px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      z-index: 200;
+      white-space: nowrap;
+      max-width: 92vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ==================== MOBILE MODE ==================== */
+    @media (max-width: 960px) {
+      :root {
+        --dice-size: 46px;
+        --dice-half: 23px;
+      }
+
+      .pip {
+        width: 7px;
+        height: 7px;
+      }
+
+      .face-1 .pip {
+        width: 11px;
+        height: 11px;
+      }
+
+      .dice-face {
+        padding: 6px;
+        border-radius: 9px;
+      }
+
+      .topbar {
+        height: 46px;
+        padding: 0 10px;
+      }
+
+      .brand-sub {
+        display: none;
+      }
+
+      .btn-text-hide-sm {
+        display: none;
+      }
+
+      .icon-btn {
+        padding: 0 9px;
+        height: 32px;
+      }
+
+      .workspace {
+        display: flex;
+        flex-direction: column;
+        padding: 6px 8px calc(8px + env(safe-area-inset-bottom));
+        gap: 6px;
+      }
+
+      .mobile-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        width: 100%;
+        flex-shrink: 0;
+      }
+
+      .m-pill {
+        background: rgba(30, 41, 59, 0.85);
+        border: 1.5px solid var(--border-subtle);
+        border-radius: 10px;
+        padding: 5px 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .m-pill.active {
+        background: rgba(30, 41, 59, 1);
+      }
+
+      .m-pill.off {
+        opacity: 0.35;
+      }
+
+      .m-pill-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px;
+        font-size: 0.72rem;
+        font-weight: 700;
+      }
+
+      .m-pill-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .m-pill-dots {
+        display: flex;
+        gap: 3px;
+      }
+
+      .m-dot {
+        flex: 1;
+        height: 4px;
+        border-radius: 99px;
+        background: rgba(148, 163, 184, 0.22);
+      }
+
+      .board-stage {
+        flex: 1;
+        min-height: 0;
+      }
+
+      .board-frame {
+        width: min(calc(100vw - 16px), calc(100dvh - 208px));
+        padding: 5px;
+        border-radius: 14px;
+      }
+
+      #board-svg {
+        border-radius: 10px;
+      }
+
+      .sidebar {
+        width: 100%;
+        height: auto;
+        flex-shrink: 0;
+        gap: 0;
+      }
+
+      .players-list,
+      .log-card {
+        display: none;
+      }
+
+      .control-card {
+        padding: 8px 10px;
+        gap: 6px;
+        border-radius: 14px;
+      }
+
+      .turn-banner {
+        display: none;
+      }
+
+      .dice-row {
+        padding: 6px 10px;
+        gap: 12px;
+      }
+
+      .roll-btn {
+        height: 40px;
+        font-size: 0.92rem;
+      }
+
+      .status-hint {
+        font-size: 0.76rem;
+        min-height: 18px;
+      }
+
+      .setup-row {
+        grid-template-columns: auto 1fr;
+      }
+
+      .setup-row .seg-control {
+        grid-column: 1 / -1;
+        justify-self: stretch;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .options-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Compact Landscape Mobile / Small Tablet */
+    @media (max-height: 600px) and (min-width: 640px) {
+      .topbar { height: 42px; }
+      .workspace {
+        display: grid;
+        grid-template-columns: 1fr 290px;
+        padding: 6px 12px;
+        gap: 10px;
+      }
+      .mobile-strip { display: none; }
+      .board-frame {
+        width: min(calc(100dvh - 58px), calc(100vw - 325px));
+      }
+      .sidebar { max-height: calc(100dvh - 56px); }
+      .players-list { display: grid; }
+      .log-card { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Header -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-badge">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M21 16V14L13 9V3.5C13 2.67 12.33 2 11.5 2C10.67 2 10 2.67 10 3.5V9L2 14V16L10 13.5V19L8 20.5V22L11.5 21L15 22V20.5L13 19V13.5L21 16Z" fill="white"/>
+          </svg>
+        </div>
+        <span>經典飛行棋</span>
+        <span class="brand-sub">離線專業版</span>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="icon-btn" id="btn-sound" title="音效開關">
+          <span id="sound-icon"></span>
+          <span class="btn-text-hide-sm" id="sound-label">音效開</span>
+        </button>
+        <button class="icon-btn" id="btn-rules" title="遊戲規則">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span class="btn-text-hide-sm">規則</span>
+        </button>
+        <button class="icon-btn primary" id="btn-setup" title="玩家設定 / 新開一局">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
+          </svg>
+          <span>設定 / 新局</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="workspace">
+      <!-- Mobile Compact Player Strip -->
+      <div class="mobile-strip" id="mobile-strip"></div>
+
+      <!-- Board -->
+      <section class="board-stage">
+        <div class="board-frame">
+          <svg id="board-svg" viewBox="0 0 900 900" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <filter id="token-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#0f172a" flood-opacity="0.38"/>
+              </filter>
+              <filter id="tile-shadow" x="-10%" y="-10%" width="120%" height="120%">
+                <feDropShadow dx="0" dy="1.5" stdDeviation="1.2" flood-color="#0f172a" flood-opacity="0.14"/>
+              </filter>
+            </defs>
+            <g id="layer-bg"></g>
+            <g id="layer-shortcuts"></g>
+            <g id="layer-tracks"></g>
+            <g id="layer-hangars"></g>
+            <g id="layer-center"></g>
+            <g id="layer-highlights"></g>
+            <g id="layer-tokens"></g>
+            <g id="layer-fx"></g>
+          </svg>
+        </div>
+      </section>
+
+      <!-- Controls & Status Sidebar -->
+      <aside class="sidebar">
+        <div class="card control-card" id="control-card">
+          <div class="turn-banner">
+            <div class="turn-who">
+              <span class="turn-dot" id="turn-dot"></span>
+              <span class="turn-name" id="turn-name">準備開始</span>
+            </div>
+            <span class="turn-tag" id="turn-tag">等待中</span>
+          </div>
+
+          <div class="dice-row">
+            <div class="dice-scene" id="dice-scene" title="點擊擲骰子">
+              <div class="dice-cube" id="dice-cube">
+                <!-- 1 -->
+                <div class="dice-face face-1"><span class="pip"></span></div>
+                <!-- 2 -->
+                <div class="dice-face face-2">
+                  <span class="pip" style="grid-column:1;grid-row:1"></span>
+                  <span class="pip" style="grid-column:3;grid-row:3"></span>
+                </div>
+                <!-- 3 -->
+                <div class="dice-face face-3">
+                  <span class="pip" style="grid-column:1;grid-row:1"></span>
+                  <span class="pip" style="grid-column:2;grid-row:2"></span>
+                  <span class="pip" style="grid-column:3;grid-row:3"></span>
+                </div>
+                <!-- 4 -->
+                <div class="dice-face face-4">
+                  <span class="pip" style="grid-column:1;grid-row:1"></span>
+                  <span class="pip" style="grid-column:3;grid-row:1"></span>
+                  <span class="pip" style="grid-column:1;grid-row:3"></span>
+                  <span class="pip" style="grid-column:3;grid-row:3"></span>
+                </div>
+                <!-- 5 -->
+                <div class="dice-face face-5">
+                  <span class="pip" style="grid-column:1;grid-row:1"></span>
+                  <span class="pip" style="grid-column:3;grid-row:1"></span>
+                  <span class="pip" style="grid-column:2;grid-row:2"></span>
+                  <span class="pip" style="grid-column:1;grid-row:3"></span>
+                  <span class="pip" style="grid-column:3;grid-row:3"></span>
+                </div>
+                <!-- 6 -->
+                <div class="dice-face face-6">
+                  <span class="pip" style="grid-column:1;grid-row:1"></span>
+                  <span class="pip" style="grid-column:3;grid-row:1"></span>
+                  <span class="pip" style="grid-column:1;grid-row:2"></span>
+                  <span class="pip" style="grid-column:3;grid-row:2"></span>
+                  <span class="pip" style="grid-column:1;grid-row:3"></span>
+                  <span class="pip" style="grid-column:3;grid-row:3"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="dice-action-area">
+              <button class="roll-btn" id="btn-roll">
+                <span>擲骰子</span>
+              </button>
+              <div class="status-hint" id="status-hint">點擊「擲骰子」或按空白鍵開始</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="players-list" id="players-list"></div>
+
+        <div class="card log-card">
+          <div class="log-title">
+            <span>即時戰況</span>
+            <span id="turn-counter" style="font-weight:600;color:#64748b;">回合 1</span>
+          </div>
+          <div class="log-list" id="log-list"></div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Setup Modal -->
+  <div class="modal-backdrop open" id="setup-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title">新局設定與玩家配置</h2>
+        <button class="close-x" id="close-setup" title="關閉">✕</button>
+      </div>
+
+      <div class="preset-row">
+        <button class="preset-btn" data-preset="1v3">1人 vs 3電腦</button>
+        <button class="preset-btn" data-preset="2p">2人對戰 (對角)</button>
+        <button class="preset-btn" data-preset="2p2ai">2人 + 2電腦</button>
+        <button class="preset-btn" data-preset="4p">4人同樂</button>
+      </div>
+
+      <div class="setup-players" id="setup-players"></div>
+
+      <div class="options-grid">
+        <div class="opt-box">
+          <span class="opt-label">起飛條件</span>
+          <div class="seg-control" id="opt-takeoff">
+            <button class="seg-btn active" data-val="6">僅限 6 點</button>
+            <button class="seg-btn" data-val="56">5 或 6 點</button>
+          </div>
+        </div>
+        <div class="opt-box">
+          <span class="opt-label">電腦移動速度</span>
+          <div class="seg-control" id="opt-speed">
+            <button class="seg-btn active" data-val="normal">標準</button>
+            <button class="seg-btn" data-val="fast">極速</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-lg primary" id="btn-start-game">開始飛行棋對戰</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rules Modal -->
+  <div class="modal-backdrop" id="rules-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title">經典飛行棋規則說明</h2>
+        <button class="close-x" id="close-rules">✕</button>
+      </div>
+      <div class="rules-content">
+        <div>
+          <h4>1. 起飛與獎勵擲骰</h4>
+          <ul>
+            <li>骰出起飛點數（預設為 <b>6</b> 點，可於設定改為 <b>5 或 6</b> 點）可派一架飛機由基地前往起飛點。</li>
+            <li>每次擲出 <b>6 點</b>可額外再擲一次；但若<b>連續擲出三個 6 點</b>，第三次將被取消並直接輪到下一位玩家。</li>
+          </ul>
+        </div>
+        <div>
+          <h4>2. 同色跳飛與飛躍航線</h4>
+          <ul>
+            <li><b>同色跳飛 (+4)：</b>飛機停在與自己同色的外圈格（終點入口除外）時，會自動向前跳飛 4 格至下一個同色格。</li>
+            <li><b>超級航線 (+12)：</b>停在己方虛線起點（第 18 步）時，將沿虛線飛躍 12 格直達對岸！若是由同色跳飛先跳至虛線起點，飛躍後停止；若直接踩中虛線起點，飛躍後可再同色跳飛 4 格。</li>
+            <li><b>飛越擊落：</b>飛躍虛線航線時，若敵機正好停留在被飛越的該方終點航道第 4 格上，該敵機會被直接擊落回基地！</li>
+          </ul>
+        </div>
+        <div>
+          <h4>3. 撞機與終點勝利</h4>
+          <ul>
+            <li><b>撞機回基地：</b>停在敵方飛機所在的外圈格子時，可將該格敵機全數擊落送回基地。己方多架飛機停在同一格會並列顯示。</li>
+            <li><b>精確到達終點：</b>進入己方終點航道後，須剛剛好擲出剩餘步數才能凱旋到達中心終點；若步數過大，多出的步數會向後彈回。率先讓 4 架飛機全部抵達終點者獲勝！</li>
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-lg primary" id="btn-close-rules">明白了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Victory Modal -->
+  <div class="modal-backdrop" id="victory-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title" id="victory-title">對局結束！</h2>
+        <button class="close-x" id="close-victory">✕</button>
+      </div>
+      <div id="victory-subtitle" style="color:#cbd5e1;font-size:0.95rem;"></div>
+      <div class="victory-podium" id="victory-podium"></div>
+      <div class="modal-footer">
+        <button class="btn-lg" id="btn-continue-game" style="display:none;">繼續爭奪剩餘名次</button>
+        <button class="btn-lg" id="btn-victory-setup">調整設定</button>
+        <button class="btn-lg primary" id="btn-play-again">再來一局</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      /* =========================================================
+         1. BOARD GEOMETRY & CONSTANTS (15x15 Grid, 900x900 SVG)
+      ========================================================= */
+      const CELL = 60;
+      const HALF = 30;
+      const NS = "http://www.w3.org/2000/svg";
+
+      const PLAYERS_META = [
+        { id: 0, key: "red",    name: "紅方", defaultHuman: "紅方玩家", defaultAI: "紅方電腦", color: "#ef4444", dark: "#b91c1c", light: "#fee2e2", tint: "#fca5a5" },
+        { id: 1, key: "yellow", name: "黃方", defaultHuman: "黃方玩家", defaultAI: "黃方電腦", color: "#eab308", dark: "#a16207", light: "#fef9c3", tint: "#fde047" },
+        { id: 2, key: "blue",   name: "藍方", defaultHuman: "藍方玩家", defaultAI: "藍方電腦", color: "#3b82f6", dark: "#1d4ed8", light: "#dbeafe", tint: "#93c5fd" },
+        { id: 3, key: "green",  name: "綠方", defaultHuman: "綠方玩家", defaultAI: "綠方電腦", color: "#22c55e", dark: "#15803d", light: "#dcfce7", tint: "#86efac" }
+      ];
+
+      // Quadrant 0 outer track coordinates (row, col), 13 tiles
+      const Q0 = [
+        [7, 0], [6, 0], [5, 0], [5, 1], [5, 2], [5, 3], [5, 4],
+        [4, 5], [3, 5], [2, 5], [1, 5], [0, 5], [0, 6]
+      ];
+
+      function rotateCW([r, c]) {
+        return [c, 14 - r];
+      }
+
+      // 52 outer track tiles clockwise, index 0 = (7, 0) [Red Home Entrance]
+      const TRACK_COORDS = [];
+      let curQ = Q0;
+      for (let q = 0; q < 4; q++) {
+        for (const pt of curQ) TRACK_COORDS.push(pt);
+        curQ = curQ.map(rotateCW);
+      }
+
+      // Per-player route offsets:
+      // Step 0: Launch Pad (private)
+      // Step 1..50: Outer track, where step 1 for Red = idx 3, step 50 = idx 0
+      // Step 51..55: Home Column
+      // Step 56: Finish center
+      const START_TRACK_INDEX = [3, 16, 29, 42];
+      const LAUNCH_PADS = [
+        [4, 1],   // Red
+        [1, 10],  // Yellow
+        [10, 13], // Blue
+        [13, 4]   // Green
+      ];
+
+      // 5-tile Home Columns leading into 3x3 center finish
+      const HOME_COLS = [
+        [[7, 1], [7, 2], [7, 3], [7, 4], [7, 5]],       // Red
+        [[1, 7], [2, 7], [3, 7], [4, 7], [5, 7]],       // Yellow
+        [[7, 13], [7, 12], [7, 11], [7, 10], [7, 9]],   // Blue
+        [[13, 7], [12, 7], [11, 7], [10, 7], [9, 7]]    // Green
+      ];
+
+      // Hangar 4x4 corner boxes (in grid units) & 4 parking centers (SVG coords)
+      const HANGAR_BOXES = [
+        { r: 0, c: 0 },   // Red
+        { r: 0, c: 11 },  // Yellow
+        { r: 11, c: 11 }, // Blue
+        { r: 11, c: 0 }   // Green
+      ];
+
+      function getHangarSlots(pId) {
+        const box = HANGAR_BOXES[pId];
+        const x0 = box.c * CELL;
+        const y0 = box.r * CELL;
+        return [
+          [x0 + 66,  y0 + 66],
+          [x0 + 174, y0 + 66],
+          [x0 + 66,  y0 + 174],
+          [x0 + 174, y0 + 174]
+        ];
+      }
+
+      // 4 finish slots inside each color's center triangle (center box is 360..540)
+      const FINISH_SLOTS = [
+        // Red (West triangle)
+        [[390, 428], [390, 472], [420, 450], [378, 450]],
+        // Yellow (North triangle)
+        [[428, 390], [472, 390], [450, 420], [450, 378]],
+        // Blue (East triangle)
+        [[510, 428], [510, 472], [480, 450], [522, 450]],
+        // Green (South triangle)
+        [[428, 510], [472, 510], [450, 480], [450, 522]]
+      ];
+
+      // Shortcut crosses next player's step 54 tile
+      // Red flies across Blue's step 54; Yellow across Green; Blue across Red; Green across Yellow
+      const SHORTCUT_CROSS_TARGET = [2, 3, 0, 1];
+
+      function cellCenter(r, c) {
+        return [c * CELL + HALF, r * CELL + HALF];
+      }
+
+      function getTrackIndex(pId, step) {
+        // step 1..50
+        return (START_TRACK_INDEX[pId] + step - 1) % 52;
+      }
+
+      function getStepXY(pId, planeIdx, state, step) {
+        if (state === "HANGAR") {
+          return getHangarSlots(pId)[planeIdx];
+        }
+        if (state === "FINISHED") {
+          return FINISH_SLOTS[pId][planeIdx];
+        }
+        if (step === 0) {
+          return cellCenter(...LAUNCH_PADS[pId]);
+        }
+        if (step >= 1 && step <= 50) {
+          const idx = getTrackIndex(pId, step);
+          return cellCenter(...TRACK_COORDS[idx]);
+        }
+        if (step >= 51 && step <= 55) {
+          return cellCenter(...HOME_COLS[pId][step - 51]);
+        }
+        return FINISH_SLOTS[pId][planeIdx];
+      }
+
+      /* =========================================================
+         2. OFFLINE WEB AUDIO SOUND ENGINE
+      ========================================================= */
+      const Sound = (() => {
+        let ctx = null;
+        let enabled = true;
+
+        function ensureCtx() {
+          if (!enabled) return null;
+          if (!ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) ctx = new AudioCtx();
+          }
+          if (ctx && ctx.state === "suspended") {
+            ctx.resume().catch(() => {});
+          }
+          return ctx;
+        }
+
+        function tone(freq, dur, type = "sine", vol = 0.14, delay = 0, slideTo = null) {
+          const ac = ensureCtx();
+          if (!ac) return;
+          const t0 = ac.currentTime + delay;
+          const osc = ac.createOscillator();
+          const gain = ac.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, t0);
+          if (slideTo) {
+            osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+          }
+          gain.gain.setValueAtTime(0.001, t0);
+          gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+          osc.connect(gain);
+          gain.connect(ac.destination);
+          osc.start(t0);
+          osc.stop(t0 + dur + 0.02);
+        }
+
+        return {
+          get enabled() { return enabled; },
+          toggle() {
+            enabled = !enabled;
+            if (enabled) ensureCtx();
+            return enabled;
+          },
+          dice() {
+            for (let i = 0; i < 5; i++) {
+              tone(240 + Math.random() * 260, 0.045, "triangle", 0.08, i * 0.055);
+            }
+          },
+          launch() {
+            tone(392, 0.12, "triangle", 0.14, 0, 523);
+            tone(523, 0.18, "sine", 0.14, 0.09, 784);
+          },
+          step(n = 0) {
+            tone(440 + n * 35, 0.065, "sine", 0.11);
+          },
+          jump() {
+            tone(420, 0.18, "triangle", 0.14, 0, 760);
+          },
+          shortcut() {
+            tone(380, 0.28, "sawtooth", 0.08, 0, 980);
+            tone(570, 0.26, "sine", 0.12, 0.08, 1180);
+          },
+          capture() {
+            tone(320, 0.14, "sawtooth", 0.15, 0, 95);
+            tone(180, 0.22, "square", 0.09, 0.07, 60);
+          },
+          finish() {
+            tone(523.25, 0.12, "triangle", 0.14, 0);
+            tone(659.25, 0.12, "triangle", 0.14, 0.1);
+            tone(783.99, 0.18, "triangle", 0.16, 0.2);
+            tone(1046.5, 0.3, "sine", 0.16, 0.32);
+          },
+          victory() {
+            const notes = [523, 659, 784, 1046, 784, 1046];
+            const times = [0, 0.11, 0.22, 0.34, 0.5, 0.64];
+            notes.forEach((f, i) => tone(f, 0.22, "triangle", 0.16, times[i]));
+          }
+        };
+      })();
+
+      /* =========================================================
+         3. GAME STATE & CONFIGURATION
+      ========================================================= */
+      const config = {
+        players: [
+          { type: "human", name: "紅方玩家" },
+          { type: "ai",    name: "黃方電腦" },
+          { type: "ai",    name: "藍方電腦" },
+          { type: "ai",    name: "綠方電腦" }
+        ],
+        takeoffRule: "6", // "6" or "56"
+        speed: "normal"   // "normal" or "fast"
+      };
+
+      const state = {
+        phase: "SETUP", // SETUP | WAIT_ROLL | ROLLING | WAIT_MOVE | ANIMATING | GAME_OVER
+        players: [],
+        activeOrder: [],
+        turnPtr: 0,
+        turnCount: 1,
+        diceValue: 1,
+        consecutiveSixes: 0,
+        movable: [], // [{ planeIdx, targetStep, ... }]
+        rankings: [],
+        aiTimer: null,
+        diceRotation: { x: -18, y: 22 }
+      };
+
+      function createPlayersFromConfig() {
+        return PLAYERS_META.map((meta, idx) => {
+          const cfg = config.players[idx];
+          return {
+            id: idx,
+            key: meta.key,
+            name: cfg.name.trim() || (cfg.type === "ai" ? meta.defaultAI : meta.defaultHuman),
+            type: cfg.type, // "human" | "ai" | "off"
+            color: meta.color,
+            dark: meta.dark,
+            light: meta.light,
+            finishedOrder: null,
+            planes: [0, 1, 2, 3].map(pi => ({
+              id: pi,
+              state: "HANGAR", // HANGAR | LAUNCH | TRACK | FINISHED
+              step: -1,
+              visualX: null,
+              visualY: null
+            }))
+          };
+        });
+      }
+
+      /* =========================================================
+         4. SVG BOARD RENDERING
+      ========================================================= */
+      function svgEl(tag, attrs = {}, parent = null) {
+        const el = document.createElementNS(NS, tag);
+        for (const [k, v] of Object.entries(attrs)) {
+          el.setAttribute(k, v);
+        }
+        if (parent) parent.appendChild(el);
+        return el;
+      }
+
+      function drawStaticBoard() {
+        const layerBg = document.getElementById("layer-bg");
+        const layerShortcuts = document.getElementById("layer-shortcuts");
+        const layerTracks = document.getElementById("layer-tracks");
+        const layerHangars = document.getElementById("layer-hangars");
+        const layerCenter = document.getElementById("layer-center");
+
+        [layerBg, layerShortcuts, layerTracks, layerHangars, layerCenter].forEach(l => l.innerHTML = "");
+
+        // Subtle background grid
+        svgEl("rect", { x: 0, y: 0, width: 900, height: 900, fill: "#fcfaf3" }, layerBg);
+
+        // Diagonal corner bridges between (5,4)-(4,5) etc.
+        const bridges = [
+          [5, 4, 4, 5],
+          [4, 9, 5, 10],
+          [9, 10, 10, 9],
+          [10, 5, 9, 4]
+        ];
+        bridges.forEach(([r1, c1, r2, c2]) => {
+          const [x1, y1] = cellCenter(r1, c1);
+          const [x2, y2] = cellCenter(r2, c2);
+          svgEl("line", {
+            x1, y1, x2, y2,
+            stroke: "#cbd5e1", "stroke-width": 16, "stroke-linecap": "round"
+          }, layerBg);
+        });
+
+        // Shortcut dashed flight paths (Step 18 -> Step 30 for each color)
+        PLAYERS_META.forEach((meta, pId) => {
+          const startIdx = getTrackIndex(pId, 18);
+          const endIdx = getTrackIndex(pId, 30);
+          const [x1, y1] = cellCenter(...TRACK_COORDS[startIdx]);
+          const [x2, y2] = cellCenter(...TRACK_COORDS[endIdx]);
+
+          svgEl("line", {
+            x1, y1, x2, y2,
+            stroke: meta.color,
+            "stroke-width": 6,
+            "stroke-dasharray": "11 8",
+            "stroke-linecap": "round",
+            opacity: "0.78"
+          }, layerShortcuts);
+
+          // Midpoint direction arrow
+          const mx = (x1 + x2) / 2;
+          const my = (y1 + y2) / 2;
+          const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+          const g = svgEl("g", { transform: `translate(${mx}, ${my}) rotate(${angle})` }, layerShortcuts);
+          svgEl("circle", { r: 12, fill: "#fffdf8", stroke: meta.color, "stroke-width": 2.5 }, g);
+          svgEl("path", { d: "M-4 -4 L5 0 L-4 4 L-2 0 Z", fill: meta.color }, g);
+        });
+
+        // Draw 52 outer track tiles
+        TRACK_COORDS.forEach(([r, c], idx) => {
+          const colorOwner = idx % 4;
+          const meta = PLAYERS_META[colorOwner];
+          const [cx, cy] = cellCenter(r, c);
+          const isHomeEntry = idx % 13 === 0;
+
+          const g = svgEl("g", { filter: "url(#tile-shadow)" }, layerTracks);
+          svgEl("rect", {
+            x: cx - 25, y: cy - 25, width: 50, height: 50, rx: 11,
+            fill: meta.light,
+            stroke: meta.color,
+            "stroke-width": isHomeEntry ? 3.2 : 2
+          }, g);
+
+          svgEl("circle", {
+            cx, cy, r: 15,
+            fill: meta.color,
+            opacity: isHomeEntry ? "0.95" : "0.86"
+          }, g);
+
+          // Special icons on shortcut starts (Red:20, Yellow:33, Blue:46, Green:7)
+          const isShortcutStart = [20, 33, 46, 7].includes(idx);
+          if (isShortcutStart) {
+            svgEl("path", {
+              d: "M0,-9 L3,-2 L9,-2 L4,2 L6,9 L0,5 L-6,9 L-4,2 L-9,-2 L-3,-2 Z",
+              fill: "#ffffff",
+              transform: `translate(${cx}, ${cy}) scale(0.95)`
+            }, g);
+          }
+
+          // Arrow on Home Entrance tiles
+          if (isHomeEntry) {
+            const angles = [0, 90, 180, 270]; // Red points right, Yellow down, Blue left, Green up
+            const ag = svgEl("g", { transform: `translate(${cx}, ${cy}) rotate(${angles[colorOwner]})` }, g);
+            svgEl("path", { d: "M-6,-5 L6,0 L-6,5 L-3,0 Z", fill: "#ffffff" }, ag);
+          }
+        });
+
+        // Draw Launch Pads & arrows into track
+        LAUNCH_PADS.forEach(([r, c], pId) => {
+          const meta = PLAYERS_META[pId];
+          const [cx, cy] = cellCenter(r, c);
+          const [tx, ty] = cellCenter(...TRACK_COORDS[START_TRACK_INDEX[pId]]);
+
+          // Connector line
+          svgEl("line", {
+            x1: cx, y1: cy, x2: tx, y2: ty,
+            stroke: meta.color, "stroke-width": 4, "stroke-dasharray": "5 5", opacity: "0.7"
+          }, layerTracks);
+
+          const g = svgEl("g", { filter: "url(#tile-shadow)" }, layerTracks);
+          svgEl("circle", {
+            cx, cy, r: 22,
+            fill: meta.light,
+            stroke: meta.color,
+            "stroke-width": 3,
+            "stroke-dasharray": "6 4"
+          }, g);
+          svgEl("text", {
+            x: cx, y: cy + 4,
+            "text-anchor": "middle",
+            "font-size": "12",
+            "font-weight": "800",
+            fill: meta.dark
+          }, g).textContent = "起飛";
+        });
+
+        // Draw 4 Home Columns
+        HOME_COLS.forEach((col, pId) => {
+          const meta = PLAYERS_META[pId];
+          col.forEach(([r, c], stepIdx) => {
+            const [cx, cy] = cellCenter(r, c);
+            const g = svgEl("g", { filter: "url(#tile-shadow)" }, layerTracks);
+            svgEl("rect", {
+              x: cx - 23, y: cy - 23, width: 46, height: 46, rx: 10,
+              fill: meta.color,
+              stroke: "#ffffff",
+              "stroke-width": 2.2
+            }, g);
+            svgEl("circle", {
+              cx, cy, r: 12,
+              fill: "rgba(255,255,255,0.26)"
+            }, g);
+            svgEl("text", {
+              x: cx, y: cy + 4.5,
+              "text-anchor": "middle",
+              "font-size": "12",
+              "font-weight": "800",
+              fill: "#ffffff"
+            }, g).textContent = String(stepIdx + 1);
+          });
+        });
+
+        // Draw 4 Hangars (4x4 corners = 240x240)
+        HANGAR_BOXES.forEach((box, pId) => {
+          const meta = PLAYERS_META[pId];
+          const x = box.c * CELL + 6;
+          const y = box.r * CELL + 6;
+          const size = 240 - 12;
+
+          svgEl("rect", {
+            x, y, width: size, height: size, rx: 26,
+            fill: meta.color,
+            stroke: meta.dark,
+            "stroke-width": 3,
+            filter: "url(#tile-shadow)"
+          }, layerHangars);
+
+          svgEl("rect", {
+            x: x + 16, y: y + 16, width: size - 32, height: size - 32, rx: 18,
+            fill: "#fffdf8",
+            opacity: "0.96"
+          }, layerHangars);
+
+          const slots = getHangarSlots(pId);
+          slots.forEach(([sx, sy]) => {
+            svgEl("circle", {
+              cx: sx, cy: sy, r: 28,
+              fill: meta.light,
+              stroke: meta.color,
+              "stroke-width": 2.5
+            }, layerHangars);
+          });
+        });
+
+        // Draw 3x3 Center Finish Zone (360..540)
+        const cG = svgEl("g", { filter: "url(#tile-shadow)" }, layerCenter);
+        svgEl("rect", {
+          x: 360, y: 360, width: 180, height: 180, rx: 12,
+          fill: "#ffffff", stroke: "#cbd5e1", "stroke-width": 2
+        }, cG);
+
+        // 4 Finish Triangles meeting at (450, 450)
+        const tris = [
+          { pId: 0, pts: "360,360 450,450 360,540" }, // Red West
+          { pId: 1, pts: "360,360 540,360 450,450" }, // Yellow North
+          { pId: 2, pts: "540,360 540,540 450,450" }, // Blue East
+          { pId: 3, pts: "360,540 450,450 540,540" }  // Green South
+        ];
+        tris.forEach(t => {
+          svgEl("polygon", {
+            points: t.pts,
+            fill: PLAYERS_META[t.pId].color,
+            stroke: "#ffffff",
+            "stroke-width": 2.5
+          }, cG);
+        });
+
+        // Center Star Emblem
+        svgEl("circle", { cx: 450, cy: 450, r: 24, fill: "#0f172a", stroke: "#ffffff", "stroke-width": 3 }, cG);
+        svgEl("path", {
+          d: "M0,-13 L3.5,-4 L13,-4 L5.5,2 L8.5,11 L0,5.5 L-8.5,11 L-5.5,2 L-13,-4 L-3.5,-4 Z",
+          fill: "#fbbf24",
+          transform: "translate(450, 450)"
+        }, cG);
+      }
+
+      /* =========================================================
+         5. TOKEN & ANIMATION RENDERING
+      ========================================================= */
+      function computePlaneHeading(pId, pState, step) {
+        if (pState === "HANGAR") return [135, 225, 315, 45][pId];
+        if (pState === "FINISHED") return [90, 180, 270, 0][pId];
+        if (step === 0) {
+          const [x1, y1] = cellCenter(...LAUNCH_PADS[pId]);
+          const [x2, y2] = cellCenter(...TRACK_COORDS[START_TRACK_INDEX[pId]]);
+          return Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI + 90;
+        }
+        if (step >= 1 && step < 50) {
+          const [x1, y1] = cellCenter(...TRACK_COORDS[getTrackIndex(pId, step)]);
+          const [x2, y2] = cellCenter(...TRACK_COORDS[getTrackIndex(pId, step + 1)]);
+          return Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI + 90;
+        }
+        return [90, 180, 270, 0][pId];
+      }
+
+      function renderTokens() {
+        const layerTokens = document.getElementById("layer-tokens");
+        const layerHighlights = document.getElementById("layer-highlights");
+        layerTokens.innerHTML = "";
+        layerHighlights.innerHTML = "";
+
+        // Group planes sharing the same logical position on track/launch to offset cleanly
+        const buckets = new Map();
+        state.players.forEach(pl => {
+          if (pl.type === "off") return;
+          pl.planes.forEach(plane => {
+            if (plane.visualX !== null && plane.visualY !== null) return;
+            let key;
+            if (plane.state === "HANGAR") key = `H-${pl.id}-${plane.id}`;
+            else if (plane.state === "FINISHED") key = `F-${pl.id}-${plane.id}`;
+            else if (plane.step === 0) key = `L-${pl.id}`;
+            else if (plane.step <= 50) key = `T-${getTrackIndex(pl.id, plane.step)}`;
+            else key = `C-${pl.id}-${plane.step}`;
+
+            if (!buckets.has(key)) buckets.set(key, []);
+            buckets.get(key).push({ pl, plane });
+          });
+        });
+
+        const stackOffsets = [
+          [[0, 0]],
+          [[-11, -8], [11, 8]],
+          [[-11, -9], [11, -9], [0, 11]],
+          [[-11, -10], [11, -10], [-11, 10], [11, 10]]
+        ];
+
+        const curPlayer = state.players[state.activeOrder[state.turnPtr]];
+        const canHumanPick =
+          state.phase === "WAIT_MOVE" &&
+          curPlayer &&
+          curPlayer.type === "human";
+
+        const movableSet = new Set(
+          canHumanPick ? state.movable.map(m => m.planeIdx) : []
+        );
+
+        // Render all planes (movable ones last so they sit on top!)
+        const renderList = [];
+        state.players.forEach(pl => {
+          if (pl.type === "off") return;
+          pl.planes.forEach(plane => {
+            let x, y, scale = 1;
+            if (plane.visualX !== null && plane.visualY !== null) {
+              x = plane.visualX;
+              y = plane.visualY;
+            } else {
+              let key;
+              if (plane.state === "HANGAR") key = `H-${pl.id}-${plane.id}`;
+              else if (plane.state === "FINISHED") key = `F-${pl.id}-${plane.id}`;
+              else if (plane.step === 0) key = `L-${pl.id}`;
+              else if (plane.step <= 50) key = `T-${getTrackIndex(pl.id, plane.step)}`;
+              else key = `C-${pl.id}-${plane.step}`;
+
+              const [bx, by] = getStepXY(pl.id, plane.id, plane.state, plane.step);
+              const group = buckets.get(key) || [];
+              const count = group.length;
+              const idxInGroup = group.findIndex(item => item.pl.id === pl.id && item.plane.id === plane.id);
+              const pattern = stackOffsets[Math.min(count, 4) - 1];
+              const [ox, oy] = pattern[idxInGroup % pattern.length];
+              x = bx + ox;
+              y = by + oy;
+              if (count > 1) scale = 0.78;
+              if (plane.state === "FINISHED") scale = 0.74;
+            }
+
+            const isMovable = canHumanPick && pl.id === curPlayer.id && movableSet.has(plane.id);
+            renderList.push({ pl, plane, x, y, scale, isMovable });
+          });
+        });
+
+        // Sort so movable tokens render on top
+        renderList.sort((a, b) => (a.isMovable === b.isMovable ? 0 : a.isMovable ? 1 : -1));
+
+        renderList.forEach(({ pl, plane, x, y, scale, isMovable }) => {
+          if (isMovable) {
+            const hg = svgEl("g", { transform: `translate(${x}, ${y})` }, layerHighlights);
+            svgEl("circle", {
+              r: 29 * scale,
+              fill: "none",
+              stroke: "#fbbf24",
+              "stroke-width": 4,
+              class: "pulse-ring"
+            }, hg);
+            svgEl("path", {
+              d: "M-7,-38 L7,-38 L0,-28 Z",
+              fill: "#fbbf24",
+              stroke: "#0f172a",
+              "stroke-width": 1.5,
+              class: "pointer-bounce"
+            }, hg);
+          }
+
+          const g = svgEl("g", {
+            transform: `translate(${x}, ${y}) scale(${scale})`,
+            class: isMovable ? "token-group movable" : "token-group",
+            filter: "url(#token-shadow)"
+          }, layerTokens);
+
+          // Outer token disc
+          svgEl("circle", {
+            r: 20,
+            fill: pl.color,
+            stroke: isMovable ? "#fef08a" : "#ffffff",
+            "stroke-width": isMovable ? 3.5 : 2.5
+          }, g);
+
+          // Inner subtle ring
+          svgEl("circle", {
+            r: 15.5,
+            fill: "none",
+            stroke: "rgba(255,255,255,0.35)",
+            "stroke-width": 1.2
+          }, g);
+
+          // Plane silhouette oriented by heading
+          const heading = computePlaneHeading(pl.id, plane.state, plane.step);
+          svgEl("path", {
+            d: "M0,-12 L2.6,-4 L11,1.5 L11,4.5 L2.6,2.2 L2.6,8.5 L6,11 L6,13 L0,11.2 L-6,13 L-6,11 L-2.6,8.5 L-2.6,2.2 L-11,4.5 L-11,1.5 L-2.6,-4 Z",
+            fill: "#ffffff",
+            transform: `rotate(${heading})`
+          }, g);
+
+          // Large invisible touch target for mobile accuracy
+          if (isMovable) {
+            const hit = svgEl("circle", {
+              r: 36,
+              fill: "transparent"
+            }, g);
+            hit.addEventListener("click", (e) => {
+              e.stopPropagation();
+              onHumanSelectPlane(plane.id);
+            });
+          }
+        });
+      }
+
+      function spawnBurstFX(x, y, color, count = 10) {
+        const layerFx = document.getElementById("layer-fx");
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+          const dist = 22 + Math.random() * 26;
+          const p = svgEl("circle", {
+            cx: x, cy: y, r: 4.5, fill: color, opacity: "1"
+          }, layerFx);
+          const start = performance.now();
+          const dur = 380;
+          function tick(now) {
+            const t = Math.min(1, (now - start) / dur);
+            const ease = 1 - Math.pow(1 - t, 3);
+            p.setAttribute("cx", x + Math.cos(angle) * dist * ease);
+            p.setAttribute("cy", y + Math.sin(angle) * dist * ease);
+            p.setAttribute("r", String(4.5 * (1 - t * 0.7)));
+            p.setAttribute("opacity", String(1 - t));
+            if (t < 1) requestAnimationFrame(tick);
+            else p.remove();
+          }
+          requestAnimationFrame(tick);
+        }
+      }
+
+      function tweenPlane(plane, x1, y1, x2, y2, duration, arcHeight = 0) {
+        return new Promise(resolve => {
+          const start = performance.now();
+          function frame(now) {
+            const t = Math.min(1, (now - start) / duration);
+            const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+            plane.visualX = x1 + (x2 - x1) * ease;
+            plane.visualY = y1 + (y2 - y1) * ease - Math.sin(t * Math.PI) * arcHeight;
+            renderTokens();
+            if (t < 1) requestAnimationFrame(frame);
+            else {
+              plane.visualX = null;
+              plane.visualY = null;
+              resolve();
+            }
+          }
+          requestAnimationFrame(frame);
+        });
+      }
+
+      function wait(ms) {
+        return new Promise(r => setTimeout(r, ms));
+      }
+
+      /* =========================================================
+         6. GAME RULES, MOVES & ANIMATION PIPELINE
+      ========================================================= */
+      function canTakeOff(roll) {
+        return config.takeoffRule === "56" ? (roll === 5 || roll === 6) : (roll === 6);
+      }
+
+      function getMovablePlanes(player, roll) {
+        const moves = [];
+        player.planes.forEach((plane, idx) => {
+          if (plane.state === "FINISHED") return;
+          if (plane.state === "HANGAR") {
+            if (canTakeOff(roll)) {
+              moves.push({ planeIdx: idx, type: "LAUNCH", targetStep: 0 });
+            }
+          } else {
+            const raw = plane.step + roll;
+            const finalStep = raw > 56 ? 56 - (raw - 56) : raw;
+            moves.push({ planeIdx: idx, type: "MOVE", rawStep: raw, targetStep: finalStep });
+          }
+        });
+        return moves;
+      }
+
+      function getCurrentPlayer() {
+        return state.players[state.activeOrder[state.turnPtr]];
+      }
+
+      function isMyColorTrackTile(pId, step) {
+        if (step < 1 || step >= 50) return false; // step 50 is Home Entrance, no jump past it
+        return getTrackIndex(pId, step) % 4 === pId;
+      }
+
+      async function captureAtTrackStep(attacker, step) {
+        if (step < 1 || step > 50) return 0;
+        const trackIdx = getTrackIndex(attacker.id, step);
+        let hits = 0;
+        for (const other of state.players) {
+          if (other.id === attacker.id || other.type === "off") continue;
+          for (const op of other.planes) {
+            if ((op.state === "TRACK") && op.step >= 1 && op.step <= 50) {
+              if (getTrackIndex(other.id, op.step) === trackIdx) {
+                const [ox, oy] = getStepXY(other.id, op.id, "TRACK", op.step);
+                spawnBurstFX(ox, oy, other.color, 12);
+                op.state = "HANGAR";
+                op.step = -1;
+                hits++;
+              }
+            }
+          }
+        }
+        if (hits > 0) {
+          Sound.capture();
+          addLog(`${attacker.name} 撞落了敵方 ${hits} 架飛機返回基地！`, attacker.color);
+          showToast(`${attacker.name} 擊落敵機！`);
+        }
+        return hits;
+      }
+
+      async function captureCrossedHomePlane(attacker) {
+        // Flying shortcut (18 -> 30) crosses next player's Home Column step 54
+        const victimId = SHORTCUT_CROSS_TARGET[attacker.id];
+        const victim = state.players[victimId];
+        if (!victim || victim.type === "off") return;
+        let hits = 0;
+        for (const vp of victim.planes) {
+          if (vp.state === "TRACK" && vp.step === 54) {
+            const [vx, vy] = getStepXY(victim.id, vp.id, "TRACK", 54);
+            spawnBurstFX(vx, vy, victim.color, 14);
+            vp.state = "HANGAR";
+            vp.step = -1;
+            hits++;
+          }
+        }
+        if (hits > 0) {
+          Sound.capture();
+          addLog(`${attacker.name} 飛越航線時順勢擊落 ${victim.name} 航道上的 ${hits} 架飛機！`, attacker.color);
+          showToast(`空中截擊！${victim.name} 飛機返回基地`);
+        }
+      }
+
+      async function executeMove(planeIdx) {
+        const player = getCurrentPlayer();
+        const plane = player.planes[planeIdx];
+        const move = state.movable.find(m => m.planeIdx === planeIdx);
+        if (!move) return;
+
+        state.phase = "ANIMATING";
+        state.movable = [];
+        renderTokens();
+        updateUI();
+
+        const stepMs = config.speed === "fast" ? 75 : 130;
+
+        if (move.type === "LAUNCH") {
+          const [x1, y1] = getStepXY(player.id, plane.id, "HANGAR", -1);
+          const [x2, y2] = getStepXY(player.id, plane.id, "LAUNCH", 0);
+          Sound.launch();
+          await tweenPlane(plane, x1, y1, x2, y2, config.speed === "fast" ? 190 : 300, 18);
+          plane.state = "LAUNCH";
+          plane.step = 0;
+          renderTokens();
+          addLog(`${player.name} 派出一架飛機前往起飛點。`, player.color);
+        } else {
+          // Step-by-step walk (including bounce back if rawStep > 56)
+          const startStep = plane.step;
+          const totalWalk = state.diceValue;
+          let curStep = startStep;
+          let dir = 1;
+
+          for (let s = 0; s < totalWalk; s++) {
+            const prevStep = curStep;
+            const prevState = prevStep === 0 ? "LAUNCH" : "TRACK";
+            if (curStep === 56) dir = -1;
+            curStep += dir;
+            const [x1, y1] = getStepXY(player.id, plane.id, prevState, prevStep);
+            const [x2, y2] = getStepXY(player.id, plane.id, "TRACK", curStep);
+            Sound.step(s);
+            await tweenPlane(plane, x1, y1, x2, y2, stepMs, 8);
+            plane.state = "TRACK";
+            plane.step = curStep;
+          }
+
+          if (dir === -1) {
+            addLog(`${player.name} 步數過大，彈回至終點航道第 ${curStep - 50} 格。`, player.color);
+          }
+
+          // Check captures on landed outer tile
+          await captureAtTrackStep(player, plane.step);
+          renderTokens();
+
+          // Check Same-Color Jump (+4) and Shortcut (+12)
+          if (plane.step >= 1 && plane.step <= 49 && isMyColorTrackTile(player.id, plane.step)) {
+            if (plane.step === 18) {
+              // Direct land on Shortcut Start -> Shortcut (+12) then Jump (+4)
+              await wait(120);
+              const [sx1, sy1] = getStepXY(player.id, plane.id, "TRACK", 18);
+              const [sx2, sy2] = getStepXY(player.id, plane.id, "TRACK", 30);
+              Sound.shortcut();
+              addLog(`${player.name} 觸發飛躍航線，直飛對岸！`, player.color);
+              showToast(`${player.name} 飛躍航線 (+12)！`);
+              await tweenPlane(plane, sx1, sy1, sx2, sy2, config.speed === "fast" ? 260 : 420, 26);
+              plane.step = 30;
+              await captureCrossedHomePlane(player);
+              await captureAtTrackStep(player, 30);
+              renderTokens();
+
+              // Follow-up +4 jump to 34
+              await wait(130);
+              const [jx1, jy1] = getStepXY(player.id, plane.id, "TRACK", 30);
+              const [jx2, jy2] = getStepXY(player.id, plane.id, "TRACK", 34);
+              Sound.jump();
+              addLog(`${player.name} 連跳加速，再向前跳飛 4 格！`, player.color);
+              await tweenPlane(plane, jx1, jy1, jx2, jy2, config.speed === "fast" ? 160 : 250, 20);
+              plane.step = 34;
+              await captureAtTrackStep(player, 34);
+              renderTokens();
+            } else {
+              // Standard +4 jump
+              await wait(120);
+              const jumpTarget = plane.step + 4;
+              const [jx1, jy1] = getStepXY(player.id, plane.id, "TRACK", plane.step);
+              const [jx2, jy2] = getStepXY(player.id, plane.id, "TRACK", jumpTarget);
+              Sound.jump();
+              addLog(`${player.name} 同色跳飛 4 格！`, player.color);
+              await tweenPlane(plane, jx1, jy1, jx2, jy2, config.speed === "fast" ? 160 : 250, 20);
+              plane.step = jumpTarget;
+              await captureAtTrackStep(player, jumpTarget);
+              renderTokens();
+
+              // If jumped onto Shortcut Start (18) -> trigger Shortcut (+12)
+              if (plane.step === 18) {
+                await wait(130);
+                const [sx1, sy1] = getStepXY(player.id, plane.id, "TRACK", 18);
+                const [sx2, sy2] = getStepXY(player.id, plane.id, "TRACK", 30);
+                Sound.shortcut();
+                addLog(`${player.name} 連跳觸發飛躍航線，直達第 30 步！`, player.color);
+                showToast(`${player.name} 連跳飛躍航線！`);
+                await tweenPlane(plane, sx1, sy1, sx2, sy2, config.speed === "fast" ? 260 : 420, 26);
+                plane.step = 30;
+                await captureCrossedHomePlane(player);
+                await captureAtTrackStep(player, 30);
+                renderTokens();
+              }
+            }
+          }
+
+          // Check Finish (step 56)
+          if (plane.step === 56) {
+            plane.state = "FINISHED";
+            const [fx, fy] = getStepXY(player.id, plane.id, "FINISHED", 56);
+            spawnBurstFX(fx, fy, "#fbbf24", 16);
+            Sound.finish();
+            renderTokens();
+            const finishedCount = player.planes.filter(p => p.state === "FINISHED").length;
+            addLog(`${player.name} 一架飛機凱旋抵達終點！(${finishedCount}/4)`, player.color);
+            showToast(`${player.name} 飛機抵達終點 (${finishedCount}/4)！`);
+
+            if (finishedCount === 4 && player.finishedOrder === null) {
+              player.finishedOrder = state.rankings.length + 1;
+              state.rankings.push(player);
+              Sound.victory();
+              if (checkGameEnd(player)) return;
+            }
+          }
+        }
+
+        // Turn transition
+        const allFinished = player.planes.every(p => p.state === "FINISHED");
+        if (state.diceValue === 6 && !allFinished) {
+          state.phase = "WAIT_ROLL";
+          updateUI(`${player.name} 擲出 6 點，獲得額外擲骰機會！`);
+          if (player.type === "ai") scheduleAI();
+        } else {
+          advanceTurn();
+        }
+      }
+
+      function checkGameEnd(justFinishedPlayer) {
+        const remaining = state.activeOrder.filter(id => state.players[id].finishedOrder === null);
+        // Show victory modal when first player wins (with option to continue if >=2 remain)
+        if (state.rankings.length === 1 || remaining.length <= 1) {
+          if (remaining.length === 1) {
+            const last = state.players[remaining[0]];
+            last.finishedOrder = state.rankings.length + 1;
+            state.rankings.push(last);
+          }
+          state.phase = "GAME_OVER";
+          updateUI(`${justFinishedPlayer.name} 贏得勝利！`);
+          openVictoryModal(remaining.length >= 2);
+          return true;
+        }
+        return false;
+      }
+
+      function advanceTurn() {
+        state.consecutiveSixes = 0;
+        const total = state.activeOrder.length;
+        for (let i = 1; i <= total; i++) {
+          const nextPtr = (state.turnPtr + i) % total;
+          const nextPlayer = state.players[state.activeOrder[nextPtr]];
+          if (nextPlayer.finishedOrder === null) {
+            if (nextPtr <= state.turnPtr) state.turnCount++;
+            state.turnPtr = nextPtr;
+            state.phase = "WAIT_ROLL";
+            updateUI(`輪到 ${nextPlayer.name} 擲骰子`);
+            if (nextPlayer.type === "ai") scheduleAI();
+            return;
+          }
+        }
+      }
+
+      /* =========================================================
+         7. DICE ROLL & SMART AI
+      ========================================================= */
+      function randomDie() {
+        if (window.crypto && window.crypto.getRandomValues) {
+          const buf = new Uint32Array(1);
+          window.crypto.getRandomValues(buf);
+          return (buf[0] % 6) + 1;
+        }
+        return Math.floor(Math.random() * 6) + 1;
+      }
+
+      const FACE_ROTATIONS = {
+        1: { x: 0,   y: 0 },
+        2: { x: 0,   y: -90 },
+        3: { x: -90, y: 0 },
+        4: { x: 90,  y: 0 },
+        5: { x: 0,   y: 90 },
+        6: { x: 0,   y: 180 }
+      };
+
+      function animateDiceCube(val) {
+        const cube = document.getElementById("dice-cube");
+        const target = FACE_ROTATIONS[val];
+        // Add 2 full spins so every roll visibly tumbles
+        const spinX = 360 * (2 + Math.floor(Math.random() * 2));
+        const spinY = 360 * (2 + Math.floor(Math.random() * 2));
+        // Snap current base rotation to multiples of 360 + target
+        const curBaseX = Math.round(state.diceRotation.x / 360) * 360;
+        const curBaseY = Math.round(state.diceRotation.y / 360) * 360;
+        state.diceRotation = {
+          x: curBaseX + spinX + target.x,
+          y: curBaseY + spinY + target.y
+        };
+        cube.style.transform = `rotateX(${state.diceRotation.x}deg) rotateY(${state.diceRotation.y}deg)`;
+      }
+
+      async function rollDice() {
+        if (state.phase !== "WAIT_ROLL") return;
+        const player = getCurrentPlayer();
+        state.phase = "ROLLING";
+        updateUI(`${player.name} 正在擲骰子...`);
+
+        const val = randomDie();
+        state.diceValue = val;
+        Sound.dice();
+        animateDiceCube(val);
+
+        await wait(config.speed === "fast" ? 320 : 480);
+
+        if (val === 6) {
+          state.consecutiveSixes++;
+          if (state.consecutiveSixes >= 3) {
+            addLog(`${player.name} 連續擲出三個 6 點，本回合取消！`, player.color);
+            showToast("連續三個 6 點！強制換手");
+            await wait(700);
+            advanceTurn();
+            return;
+          }
+        } else {
+          state.consecutiveSixes = 0;
+        }
+
+        const moves = getMovablePlanes(player, val);
+        state.movable = moves;
+
+        if (moves.length === 0) {
+          addLog(`${player.name} 擲出 ${val} 點，無可移動棋子。`, player.color);
+          updateUI(`擲出 ${val} 點，無飛機可移動`);
+          await wait(config.speed === "fast" ? 380 : 650);
+          advanceTurn();
+          return;
+        }
+
+        if (player.type === "human") {
+          state.phase = "WAIT_MOVE";
+          renderTokens();
+          updateUI(`擲出 ${val} 點！請點擊閃爍的飛機移動`);
+        } else {
+          state.phase = "WAIT_MOVE";
+          renderTokens();
+          updateUI(`${player.name} 擲出 ${val} 點，思考中...`);
+          await wait(config.speed === "fast" ? 240 : 480);
+          const bestIdx = chooseBestAIMove(player, moves);
+          executeMove(bestIdx);
+        }
+      }
+
+      function chooseBestAIMove(player, moves) {
+        let bestMove = moves[0];
+        let bestScore = -9999;
+
+        for (const m of moves) {
+          const plane = player.planes[m.planeIdx];
+          let score = 0;
+
+          if (m.type === "LAUNCH") {
+            const activePlanes = player.planes.filter(p => p.state === "LAUNCH" || p.state === "TRACK").length;
+            score = 52 + (activePlanes === 0 ? 30 : 0);
+          } else {
+            let finalStep = m.targetStep;
+            const bounced = m.rawStep > 56;
+            if (bounced) score -= 18;
+
+            // Simulate jump / shortcut
+            let bonusCaptureSteps = [finalStep];
+            if (finalStep >= 1 && finalStep <= 49 && isMyColorTrackTile(player.id, finalStep)) {
+              if (finalStep === 18) {
+                score += 62;
+                finalStep = 34;
+                bonusCaptureSteps.push(30, 34);
+              } else {
+                const afterJump = finalStep + 4;
+                score += 24;
+                finalStep = afterJump;
+                bonusCaptureSteps.push(afterJump);
+                if (afterJump === 18) {
+                  score += 60;
+                  finalStep = 30;
+                  bonusCaptureSteps.push(30);
+                }
+              }
+            }
+
+            if (finalStep === 56) score += 140;
+            if (plane.step <= 50 && finalStep >= 51) score += 42; // Safe home column
+
+            // Check captures
+            for (const cStep of bonusCaptureSteps) {
+              if (cStep >= 1 && cStep <= 50) {
+                const tIdx = getTrackIndex(player.id, cStep);
+                for (const other of state.players) {
+                  if (other.id === player.id || other.type === "off") continue;
+                  for (const op of other.planes) {
+                    if (op.state === "TRACK" && op.step >= 1 && op.step <= 50) {
+                      if (getTrackIndex(other.id, op.step) === tIdx) {
+                        score += 65 + op.step * 0.9;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+            // Danger awareness: avoid sitting 1..6 tiles ahead of an enemy, or escape danger
+            const isDanger = (step) => {
+              if (step < 1 || step > 50) return false;
+              const myIdx = getTrackIndex(player.id, step);
+              for (const other of state.players) {
+                if (other.id === player.id || other.type === "off") continue;
+                for (const op of other.planes) {
+                  if (op.state === "TRACK" && op.step >= 1 && op.step <= 49) {
+                    const opIdx = getTrackIndex(other.id, op.step);
+                    const dist = (myIdx - opIdx + 52) % 52;
+                    if (dist >= 1 && dist <= 6) return true;
+                  }
+                }
+              }
+              return false;
+            };
+
+            if (isDanger(plane.step)) score += 22;
+            if (isDanger(finalStep)) score -= 18;
+
+            score += finalStep * 0.28;
+          }
+
+          // Small tie-breaker randomness
+          score += Math.random() * 2;
+          if (score > bestScore) {
+            bestScore = score;
+            bestMove = m;
+          }
+        }
+        return bestMove.planeIdx;
+      }
+
+      function scheduleAI() {
+        clearTimeout(state.aiTimer);
+        state.aiTimer = setTimeout(() => {
+          if (state.phase === "WAIT_ROLL" && getCurrentPlayer()?.type === "ai") {
+            rollDice();
+          }
+        }, config.speed === "fast" ? 260 : 520);
+      }
+
+      function onHumanSelectPlane(planeIdx) {
+        if (state.phase !== "WAIT_MOVE") return;
+        const player = getCurrentPlayer();
+        if (!player || player.type !== "human") return;
+        if (!state.movable.some(m => m.planeIdx === planeIdx)) return;
+        executeMove(planeIdx);
+      }
+
+      /* =========================================================
+         8. UI SYNC, LOGS, MODALS & CONTROLS
+      ========================================================= */
+      let toastTimer = null;
+      function showToast(msg) {
+        const el = document.getElementById("toast");
+        el.textContent = msg;
+        el.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
+      }
+
+      function addLog(msg, color = "#94a3b8") {
+        const list = document.getElementById("log-list");
+        const item = document.createElement("div");
+        item.className = "log-item";
+        item.style.borderLeftColor = color;
+        item.textContent = msg;
+        list.prepend(item);
+        while (list.children.length > 45) {
+          list.lastChild.remove();
+        }
+      }
+
+      function updateUI(customHint = null) {
+        const cur = getCurrentPlayer();
+        const turnDot = document.getElementById("turn-dot");
+        const turnName = document.getElementById("turn-name");
+        const turnTag = document.getElementById("turn-tag");
+        const btnRoll = document.getElementById("btn-roll");
+        const hintEl = document.getElementById("status-hint");
+        const turnCounter = document.getElementById("turn-counter");
+
+        turnCounter.textContent = `回合 ${state.turnCount}`;
+
+        if (cur) {
+          turnDot.style.background = cur.color;
+          turnDot.style.color = cur.color;
+          turnName.textContent = cur.name;
+          turnTag.textContent = cur.type === "ai" ? "電腦 AI" : "真人玩家";
+          btnRoll.style.background = `linear-gradient(135deg, ${cur.color}, ${cur.dark})`;
+        }
+
+        const canHumanRoll = state.phase === "WAIT_ROLL" && cur && cur.type === "human";
+        btnRoll.disabled = !canHumanRoll;
+
+        if (customHint) {
+          hintEl.textContent = customHint;
+        } else if (state.phase === "WAIT_ROLL") {
+          hintEl.textContent = cur?.type === "human" ? "請擲骰子（或按空白鍵）" : `${cur?.name} 準備擲骰...`;
+        }
+
+        // Desktop Player Cards
+        const list = document.getElementById("players-list");
+        list.innerHTML = "";
+        state.players.forEach(pl => {
+          const isActive = cur && cur.id === pl.id && state.phase !== "GAME_OVER";
+          const card = document.createElement("div");
+          card.className = `player-card${isActive ? " active" : ""}${pl.type === "off" ? " off" : ""}`;
+          if (isActive) card.style.borderColor = pl.color;
+
+          const head = document.createElement("div");
+          head.className = "player-card-head";
+
+          const ident = document.createElement("div");
+          ident.className = "player-ident";
+          ident.innerHTML = `<span class="player-swatch" style="background:${pl.color}"></span><span class="player-label">${escapeHtml(pl.name)}</span>`;
+
+          const right = document.createElement("span");
+          if (pl.finishedOrder) {
+            right.className = "player-rank-badge";
+            right.textContent = `第${pl.finishedOrder}名`;
+          } else {
+            right.className = "player-type-pill";
+            right.textContent = pl.type === "off" ? "關閉" : (pl.type === "ai" ? "電腦" : "真人");
+          }
+
+          head.append(ident, right);
+          card.appendChild(head);
+
+          const pips = document.createElement("div");
+          pips.className = "player-pips";
+          pl.planes.forEach(p => {
+            const pip = document.createElement("span");
+            pip.className = "plane-pip";
+            if (p.state === "FINISHED") {
+              pip.classList.add("finished");
+              pip.style.background = pl.color;
+              pip.style.color = pl.color;
+            } else if (p.state === "LAUNCH" || p.state === "TRACK") {
+              pip.classList.add("active");
+            }
+            pips.appendChild(pip);
+          });
+          card.appendChild(pips);
+          list.appendChild(card);
+        });
+
+        // Mobile Compact Strip
+        const strip = document.getElementById("mobile-strip");
+        strip.innerHTML = "";
+        state.players.forEach(pl => {
+          const isActive = cur && cur.id === pl.id && state.phase !== "GAME_OVER";
+          const pill = document.createElement("div");
+          pill.className = `m-pill${isActive ? " active" : ""}${pl.type === "off" ? " off" : ""}`;
+          if (isActive) pill.style.borderColor = pl.color;
+
+          const top = document.createElement("div");
+          top.className = "m-pill-top";
+          top.innerHTML = `<span class="m-pill-name" style="color:${pl.color}">${escapeHtml(pl.name)}</span><span>${pl.type === "off" ? "-" : (pl.type === "ai" ? "AI" : "人")}</span>`;
+
+          const dots = document.createElement("div");
+          dots.className = "m-pill-dots";
+          pl.planes.forEach(p => {
+            const d = document.createElement("span");
+            d.className = "m-dot";
+            if (p.state === "FINISHED") d.style.background = pl.color;
+            else if (p.state !== "HANGAR") d.style.background = "rgba(248,250,252,0.5)";
+            dots.appendChild(d);
+          });
+
+          pill.append(top, dots);
+          strip.appendChild(pill);
+        });
+      }
+
+      function escapeHtml(str) {
+        return str.replace(/[&<>"']/g, m => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        }[m]));
+      }
+
+      /* =========================================================
+         9. SETUP MODAL & GAME LIFECYCLE
+      ========================================================= */
+      function renderSetupModal() {
+        const container = document.getElementById("setup-players");
+        container.innerHTML = "";
+
+        PLAYERS_META.forEach((meta, idx) => {
+          const cfg = config.players[idx];
+          const row = document.createElement("div");
+          row.className = "setup-row";
+
+          const badge = document.createElement("div");
+          badge.className = "setup-color-badge";
+          badge.style.background = meta.color;
+          badge.textContent = meta.name[0];
+
+          const input = document.createElement("input");
+          input.type = "text";
+          input.maxLength = 12;
+          input.className = "setup-name-input";
+          input.value = cfg.name;
+          input.disabled = cfg.type === "off";
+          input.addEventListener("input", (e) => {
+            config.players[idx].name = e.target.value;
+          });
+
+          const seg = document.createElement("div");
+          seg.className = "seg-control";
+          [
+            { val: "human", label: "真人" },
+            { val: "ai",    label: "電腦" },
+            { val: "off",   label: "關閉" }
+          ].forEach(opt => {
+            const btn = document.createElement("button");
+            btn.className = "seg-btn";
+            if (cfg.type === opt.val) {
+              btn.classList.add("active");
+              if (opt.val === "off") btn.classList.add("off-mode");
+            }
+            btn.textContent = opt.label;
+            btn.addEventListener("click", () => {
+              const prevType = config.players[idx].type;
+              config.players[idx].type = opt.val;
+              if (opt.val === "human" && (prevType !== "human") && cfg.name === meta.defaultAI) {
+                config.players[idx].name = meta.defaultHuman;
+              } else if (opt.val === "ai" && (prevType !== "ai") && cfg.name === meta.defaultHuman) {
+                config.players[idx].name = meta.defaultAI;
+              }
+              renderSetupModal();
+            });
+            seg.appendChild(btn);
+          });
+
+          row.append(badge, input, seg);
+          container.appendChild(row);
+        });
+      }
+
+      function applyPreset(preset) {
+        const types = {
+          "1v3":   ["human", "ai", "ai", "ai"],
+          "2p":    ["human", "off", "human", "off"],
+          "2p2ai": ["human", "ai", "human", "ai"],
+          "4p":    ["human", "human", "human", "human"]
+        }[preset];
+        if (!types) return;
+        types.forEach((t, i) => {
+          config.players[i].type = t;
+          if (t === "human") config.players[i].name = PLAYERS_META[i].defaultHuman;
+          if (t === "ai") config.players[i].name = PLAYERS_META[i].defaultAI;
+        });
+        renderSetupModal();
+      }
+
+      function startNewGame() {
+        const activeIds = config.players
+          .map((p, i) => (p.type !== "off" ? i : -1))
+          .filter(i => i !== -1);
+
+        if (activeIds.length < 2) {
+          showToast("至少需要啟用 2 位玩家才能開始遊戲！");
+          return;
+        }
+
+        clearTimeout(state.aiTimer);
+        state.players = createPlayersFromConfig();
+        state.activeOrder = activeIds;
+        state.turnPtr = 0;
+        state.turnCount = 1;
+        state.consecutiveSixes = 0;
+        state.movable = [];
+        state.rankings = [];
+        state.phase = "WAIT_ROLL";
+
+        document.getElementById("log-list").innerHTML = "";
+        document.getElementById("setup-modal").classList.remove("open");
+        document.getElementById("victory-modal").classList.remove("open");
+
+        const first = getCurrentPlayer();
+        addLog(`新戰局開始！共 ${activeIds.length} 方參戰。`, "#38bdf8");
+        renderTokens();
+        updateUI(`輪到 ${first.name} 擲骰子`);
+        if (first.type === "ai") scheduleAI();
+      }
+
+      function openVictoryModal(canContinue) {
+        const winner = state.rankings[0];
+        document.getElementById("victory-title").textContent = `🏆 ${winner.name} 榮獲冠軍！`;
+        document.getElementById("victory-subtitle").textContent = `共經歷 ${state.turnCount} 回合完成本局對戰。`;
+
+        const podium = document.getElementById("victory-podium");
+        podium.innerHTML = "";
+        const medals = ["🥇 第 1 名", "🥈 第 2 名", "🥉 第 3 名", "✈ 第 4 名"];
+        state.rankings.forEach((pl, i) => {
+          const row = document.createElement("div");
+          row.className = "podium-item";
+          row.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;font-weight:700;">
+              <span style="width:14px;height:14px;border-radius:4px;background:${pl.color};display:inline-block;"></span>
+              <span>${escapeHtml(pl.name)}</span>
+            </div>
+            <span style="font-weight:800;color:#fbbf24;">${medals[i] || `第 ${i + 1} 名`}</span>
+          `;
+          podium.appendChild(row);
+        });
+
+        const btnCont = document.getElementById("btn-continue-game");
+        btnCont.style.display = canContinue ? "block" : "none";
+        document.getElementById("victory-modal").classList.add("open");
+      }
+
+      function updateSoundButton() {
+        const on = Sound.enabled;
+        document.getElementById("sound-label").textContent = on ? "音效開" : "靜音";
+        document.getElementById("sound-icon").innerHTML = on
+          ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`
+          : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
+      }
+
+      /* =========================================================
+         10. EVENT BINDINGS & INIT
+      ========================================================= */
+      function bindEvents() {
+        document.getElementById("btn-roll").addEventListener("click", rollDice);
+        document.getElementById("dice-scene").addEventListener("click", rollDice);
+
+        document.getElementById("btn-sound").addEventListener("click", () => {
+          Sound.toggle();
+          updateSoundButton();
+        });
+
+        document.getElementById("btn-rules").addEventListener("click", () => {
+          document.getElementById("rules-modal").classList.add("open");
+        });
+        document.getElementById("close-rules").addEventListener("click", () => {
+          document.getElementById("rules-modal").classList.remove("open");
+        });
+        document.getElementById("btn-close-rules").addEventListener("click", () => {
+          document.getElementById("rules-modal").classList.remove("open");
+        });
+
+        document.getElementById("btn-setup").addEventListener("click", () => {
+          renderSetupModal();
+          document.getElementById("setup-modal").classList.add("open");
+        });
+        document.getElementById("close-setup").addEventListener("click", () => {
+          if (state.players.length > 0 && state.phase !== "SETUP") {
+            document.getElementById("setup-modal").classList.remove("open");
+          } else {
+            startNewGame();
+          }
+        });
+
+        document.querySelectorAll(".preset-btn").forEach(btn => {
+          btn.addEventListener("click", () => applyPreset(btn.dataset.preset));
+        });
+
+        document.querySelectorAll("#opt-takeoff .seg-btn").forEach(btn => {
+          btn.addEventListener("click", () => {
+            document.querySelectorAll("#opt-takeoff .seg-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            config.takeoffRule = btn.dataset.val;
+          });
+        });
+
+        document.querySelectorAll("#opt-speed .seg-btn").forEach(btn => {
+          btn.addEventListener("click", () => {
+            document.querySelectorAll("#opt-speed .seg-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            config.speed = btn.dataset.val;
+          });
+        });
+
+        document.getElementById("btn-start-game").addEventListener("click", startNewGame);
+
+        document.getElementById("close-victory").addEventListener("click", () => {
+          document.getElementById("victory-modal").classList.remove("open");
+        });
+        document.getElementById("btn-play-again").addEventListener("click", startNewGame);
+        document.getElementById("btn-victory-setup").addEventListener("click", () => {
+          document.getElementById("victory-modal").classList.remove("open");
+          renderSetupModal();
+          document.getElementById("setup-modal").classList.add("open");
+        });
+        document.getElementById("btn-continue-game").addEventListener("click", () => {
+          document.getElementById("victory-modal").classList.remove("open");
+          advanceTurn();
+        });
+
+        // Keyboard support (Desktop)
+        window.addEventListener("keydown", (e) => {
+          const modalOpen = document.querySelector(".modal-backdrop.open");
+          if (modalOpen) return;
+          if (e.code === "Space" || e.code === "Enter") {
+            if (state.phase === "WAIT_ROLL" && getCurrentPlayer()?.type === "human") {
+              e.preventDefault();
+              rollDice();
+            }
+          }
+        });
+      }
+
+      // Bootstrap
+      drawStaticBoard();
+      updateSoundButton();
+      renderSetupModal();
+      state.players = createPlayersFromConfig();
+      state.activeOrder = [0, 1, 2, 3];
+      renderTokens();
+      updateUI("請設定玩家後開始對戰");
+      bindEvents();
+    })();
+  </script>
+</body>
+</html>
